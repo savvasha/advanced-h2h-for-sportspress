@@ -353,9 +353,9 @@ class SAH2H_League_Table extends SP_League_Table {
 			}
 
 			$results = (array) get_post_meta( $event->ID, 'sp_results', true );
-			$minutes = get_post_meta( $event->ID, 'sp_minutes', true );
-			if ( $minutes === '' ) {
-				$minutes = get_option( 'sportspress_event_minutes', 90 );
+			$minutes = (int) get_post_meta( $event->ID, 'sp_minutes', true );
+			if ( ! $minutes ) {
+				$minutes = (int) get_option( 'sportspress_event_minutes', 90 );
 			}
 
 			$i = 0;
