@@ -790,7 +790,11 @@ endif;
 		if ( ! $is_main_loop ) {
 			// Check the h2h priorities if are h2h_only.
 			foreach ( $this->h2h_priorities as $temp_priority ) {
-				if ( isset( $temp_priority['h2h_only'] ) && '' == $temp_priority['h2h_only'] ) {
+				// An unchecked "H2H Only" checkbox is not posted at all, so the
+				// 'h2h_only' key is absent (not an empty string). Treat absent OR
+				// empty as "not H2H only" so full-season stats are restored for this
+				// tiebreak column; only a checked box ( '1' ) keeps head-to-head data.
+				if ( empty( $temp_priority['h2h_only'] ) ) {
 					// If not replace the current h2h stat data with the full (temporary) stat data.
 					foreach ( $team_ids as $temp_team_id ) {
 						$merged[ $temp_team_id ][ $temp_priority['column'] ] = $this->temp_merged[ $temp_team_id ][ $temp_priority['column'] ];

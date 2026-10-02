@@ -148,6 +148,16 @@ if ( intval( $number ) > 0 ) :
 	endif;
 endif;
 
+/**
+ * Filter the league table rows just before they are rendered.
+ *
+ * Keys are team post IDs (int); values are the per-team data arrays.
+ *
+ * @param array $data     Row data keyed by team post ID.
+ * @param int   $table_id The sp_table post ID being rendered.
+ */
+$data = apply_filters( 'sah2h_league_table_rows', $data, $id );
+
 // Loop through the teams.
 foreach ( $data as $team_id => $row ) :
 
@@ -160,26 +170,52 @@ foreach ( $data as $team_id => $row ) :
 		continue;
 	}
 
-	// Generate tags for highlighted team.
-	$tr_class = '';
-	$td_class = '';
+	// Native highlighted team: build the base row/cell classes. Consumers can
+	// add their own highlighting (and anything else) via the filters below.
+	$row_classes  = array( 0 === $i % 2 ? 'odd' : 'even' );
+	$cell_classes = array();
 	if ( $highlight == $team_id ) :
-		$tr_class = ' highlighted';
-		$td_class = ' sp-highlight';
+		$row_classes[]  = 'highlighted';
+		$cell_classes[] = 'sp-highlight';
 	endif;
+	$row_classes[] = 'sp-row-no-' . $i;
 
-	$output .= '<tr class="' . ( 0 === $i % 2 ? 'odd' : 'even' ) . $tr_class . ' sp-row-no-' . $i . '">';
+	/**
+	 * Filter the <tr> attributes for a single league table row.
+	 *
+	 * @param array $attr     Attribute array ('class' => array of CSS classes).
+	 * @param int   $team_id  Team post ID for the current row.
+	 * @param array $row      Raw row data for the current team.
+	 * @param int   $table_id The sp_table post ID being rendered.
+	 */
+	$row_attr = apply_filters(
+		'sah2h_league_table_row_attributes',
+		array( 'class' => $row_classes ),
+		(int) $team_id,
+		$row,
+		$id
+	);
+
+	$row_html = '<tr ' . sah2h_html_attributes( $row_attr ) . '>';
 
 	// Rank.
-	$output .= '<td class="data-rank' . $td_class . '" data-label="' . $labels['pos'] . '">' . sp_array_value( $row, 'pos' ) . '</td>';
+	$row_html .= sah2h_league_table_cell(
+		'rank',
+		sp_array_value( $row, 'pos' ),
+		array_merge( array( 'data-rank' ), $cell_classes ),
+		$labels['pos'],
+		(int) $team_id,
+		$row,
+		$id
+	);
 
-	$name_class = '';
+	$name_classes = array( 'data-name' );
 
 	if ( $show_team_logo ) :
 		if ( has_post_thumbnail( $team_id ) ) :
-			$logo        = get_the_post_thumbnail( $team_id, 'sportspress-fit-icon' );
-			$name        = '<span class="team-logo">' . $logo . '</span>' . $name;
-			$name_class .= ' has-logo';
+			$logo           = get_the_post_thumbnail( $team_id, 'sportspress-fit-icon' );
+			$name           = '<span class="team-logo">' . $logo . '</span>' . $name;
+			$name_classes[] = 'has-logo';
 		endif;
 	endif;
 
@@ -188,18 +224,45 @@ foreach ( $data as $team_id => $row ) :
 		$name      = '<a href="' . $permalink . '">' . $name . '</a>';
 	endif;
 
-	$output .= '<td class="data-name' . $name_class . $td_class . '" data-label="' . $labels['name'] . '">' . $name . '</td>';
+	// Name.
+	$row_html .= sah2h_league_table_cell(
+		'name',
+		$name,
+		array_merge( $name_classes, $cell_classes ),
+		$labels['name'],
+		(int) $team_id,
+		$row,
+		$id
+	);
 
 	foreach ( $labels as $key => $value ) :
 		if ( in_array( $key, array( 'pos', 'name' ), true ) ) {
 			continue;
 		}
 		if ( ! is_array( $columns ) || in_array( $key, $columns, true ) ) {
-			$output .= '<td class="data-' . $key . $td_class . '" data-label="' . $labels[ $key ] . '">' . sp_array_value( $row, $key, '&mdash;' ) . '</td>';
+			$row_html .= sah2h_league_table_cell(
+				$key,
+				sp_array_value( $row, $key, '&mdash;' ),
+				array_merge( array( 'data-' . $key ), $cell_classes ),
+				$labels[ $key ],
+				(int) $team_id,
+				$row,
+				$id
+			);
 		}
 	endforeach;
 
-	$output .= '</tr>';
+	$row_html .= '</tr>';
+
+	/**
+	 * Filter the complete <tr>...</tr> markup for a single league table row.
+	 *
+	 * @param string $row_html The assembled row markup.
+	 * @param int    $team_id  Team post ID for the current row.
+	 * @param array  $row      Raw row data for the current team.
+	 * @param int    $table_id The sp_table post ID being rendered.
+	 */
+	$output .= apply_filters( 'sah2h_league_table_row_html', $row_html, (int) $team_id, $row, $id );
 
 	$i++;
 	$start++;
@@ -213,6 +276,14 @@ $output .= '</div>';
 if ( $show_full_table_link ) {
 	$output .= '<div class="sp-league-table-link sp-view-all-link"><a href="' . get_permalink( $id ) . '">' . esc_attr__( 'View full table', 'sportspress' ) . '</a></div>';
 }
+
+/**
+ * Filter the complete league table HTML before it is echoed.
+ *
+ * @param string $output   The full assembled table markup.
+ * @param int    $table_id The sp_table post ID being rendered.
+ */
+$output = apply_filters( 'sah2h_league_table_html', $output, $id );
 ?>
 <div class="sp-template sp-template-league-table">
 	<?php echo wp_kses_post( $output ); ?>
